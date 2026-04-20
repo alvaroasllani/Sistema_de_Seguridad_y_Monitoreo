@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>SENTINEL_LOGIC_V1 | Security Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='8' fill='%23131313'/><text x='50' y='62' font-size='50' text-anchor='middle' fill='%232563eb' font-family='monospace' font-weight='bold'>S1</text></svg>">
+    
+    <!-- Tailwind CSS CDN and Configuration -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#8d90a0",
+                        "tertiary-container": "#cf2c30",
+                        "surface-bright": "#393939",
+                        "inverse-on-surface": "#303030",
+                        "background": "#131313",
+                        "on-tertiary": "#68000a",
+                        "inverse-primary": "#0053db",
+                        "on-surface": "#e2e2e2",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-variant": "#353535",
+                        "surface-container-high": "#2a2a2a",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary-fixed": "#e0e3e5",
+                        "on-primary-fixed": "#00174b",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "on-error": "#690005",
+                        "on-secondary-fixed-variant": "#444749",
+                        "error": "#ffb4ab",
+                        "on-background": "#e2e2e2",
+                        "on-tertiary-fixed": "#410004",
+                        "on-primary": "#002a78",
+                        "surface-container-low": "#1b1b1b",
+                        "surface-tint": "#b4c5ff",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-secondary": "#2d3133",
+                        "surface-container": "#1f1f1f",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-surface-variant": "#c3c6d7",
+                        "secondary": "#c4c7c9",
+                        "surface-dim": "#131313",
+                        "outline-variant": "#434655",
+                        "tertiary": "#ffb3ad",
+                        "primary-container": "#2563eb",
+                        "on-tertiary-container": "#ffecea",
+                        "surface-container-highest": "#353535",
+                        "secondary-container": "#464a4b",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#191c1e",
+                        "secondary-fixed-dim": "#c4c7c9",
+                        "surface": "#131313",
+                        "primary": "#b4c5ff",
+                        "inverse-surface": "#e2e2e2",
+                        "on-secondary-container": "#b6b9bb",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "0px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-background text-on-surface font-body min-h-screen selection:bg-primary selection:text-on-primary flex flex-col overflow-y-auto overflow-x-hidden">
+    
+    <!-- Top Navigation -->
+    <header class="bg-background text-primary font-headline font-bold tracking-tighter uppercase border-b border-outline flex justify-between items-center px-6 py-4 w-full h-16 shrink-0 z-50">
+        <div class="flex items-center gap-6">
+            <span class="text-xl font-black tracking-tighter text-on-surface">SENTINEL_LOGIC_V1</span>
+            <div class="h-4 w-px bg-outline/30"></div>
+            <div class="flex items-center gap-2 text-sm">
+                <span class="text-on-surface">Control de Seguridad RB-01</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                    <span class="font-mono text-xs text-on-surface/60">SYSTEM_CLOCK</span>
+                    <span id="system-clock" class="font-mono text-lg text-on-surface leading-none">00:00:00</span>
+                </div>
+                <div class="h-8 w-px bg-outline/30"></div>
+                <div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-outline/20">
+                    <span class="w-2 h-2 bg-green-500 blinking-dot"></span>
+                    <span class="text-[10px] tracking-widest text-on-surface">SISTEMA ONLINE</span>
+                </div>
+            </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-visible">
+        <div class="grid grid-cols-12 gap-6 max-w-[1600px] mx-auto h-full">
+            
+            <!-- SECTION: CONTROL & STATUS -->
+            <section class="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-hidden">
+                <div class="bg-surface-container-low border border-outline p-6 flex flex-col gap-4 overflow-y-auto">
+                    <div class="flex justify-between items-start">
+                        <h3 class="font-headline font-extrabold text-sm tracking-tighter text-on-surface uppercase">Estado de Alarma</h3>
+                        <span class="font-mono text-[10px] text-primary">ID: ALARM_UNIT_01</span>
+                    </div>
+                    
+                    <!-- Toggle Switch Core -->
+                    <div class="flex flex-col gap-4">
+                        <div id="system-status-card" class="bg-error-container border-2 border-on-error p-6 flex items-center justify-between group cursor-pointer hover:bg-error-container/80 transition-all duration-300">
+                            <div class="flex flex-col">
+                                <span id="status-text" class="font-headline font-black text-2xl tracking-tighter text-white uppercase">Sistema Armado</span>
+                                <span id="status-instruction" class="font-mono text-[10px] text-white/70">PRESIONE PARA DESACTIVAR</span>
+                            </div>
+                            <div class="w-12 h-12 bg-white flex items-center justify-center">
+                                <span id="status-icon" class="material-symbols-outlined text-error-container text-2xl" style="font-variation-settings: 'FILL' 1;">lock</span>
+                            </div>
+                        </div>
+
+                        <!-- Primary Alarm Buttons -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-encender" class="bg-green-900/40 border border-green-500/50 py-3 font-mono text-xs text-green-400 uppercase tracking-widest hover:bg-green-500 hover:text-white transition-all duration-200">Encender</button>
+                            <button id="btn-apagar" class="bg-surface-container-high border border-outline/30 py-3 font-mono text-xs text-on-surface/40 uppercase tracking-widest hover:bg-error-container hover:text-white transition-all duration-200">Apagar</button>
+                        </div>
+                        
+                        <div class="h-px bg-outline/20 my-2"></div>
+                        
+                        <!-- Secondary Controls -->
+                        <div class="flex flex-col gap-4">
+                            <h4 class="font-mono text-[10px] text-on-surface/50 tracking-widest uppercase">Periféricos Auxiliares</h4>
+                            <!-- FOCO -->
+                            <div class="flex items-center justify-between gap-4">
+                                <span id="foco-label" class="font-mono text-[10px] text-on-surface/80 uppercase">Foco Exterior</span>
+                                <div class="flex gap-2">
+                                    <button id="foco-on" class="px-4 py-1.5 font-mono text-[10px] border border-green-500/30 text-green-500 hover:bg-green-500/20 uppercase transition-all duration-200">ON</button>
+                                    <button id="foco-off" class="px-4 py-1.5 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all duration-200">OFF</button>
+                                </div>
+                            </div>
+                            <!-- CHAPA ELÉCTRICA -->
+                            <div class="flex items-center justify-between gap-4">
+                                <span id="chapa-label" class="font-mono text-[10px] text-on-surface/80 uppercase">Chapa Eléctrica</span>
+                                <div class="flex gap-2">
+                                    <button id="chapa-abrir" class="px-3 py-1.5 font-mono text-[10px] border border-primary/30 text-primary hover:bg-primary/20 uppercase transition-all duration-200">Abrir</button>
+                                    <button id="chapa-cerrar" class="px-3 py-1.5 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all duration-200">Cerrar</button>
+                                </div>
+                            </div>
+                            <!-- ALARMA SONORA -->
+                            <div class="flex items-center justify-between gap-4">
+                                <span id="alarma-label" class="font-mono text-[10px] text-on-surface/80 uppercase">Alarma Sonora</span>
+                                <div class="flex gap-2">
+                                    <button id="alarma-activar" class="px-2 py-1.5 font-mono text-[10px] border border-error-container/30 text-error-container hover:bg-error-container/20 uppercase transition-all duration-200">Activar</button>
+                                    <button id="alarma-desactivar" class="px-2 py-1.5 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all duration-200">Desactivar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container-lowest p-3 border-l-4 border-primary mt-auto">
+                        <div class="flex gap-3">
+                            <span class="material-symbols-outlined text-primary text-sm">info</span>
+                            <span id="last-modified" class="font-mono text-[10px] leading-tight text-on-surface/80">ÚLTIMA MODIFICACIÓN: ADMIN_TECH EN 2024-05-20 22:15</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: VIDEO MONITORING -->
+            <section class="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
+                <div class="relative bg-black aspect-video border-2 border-primary overflow-hidden group shrink-0">
+                    <!-- CCTV Meta Overlay -->
+                    <div class="absolute inset-0 pointer-events-none border-[12px] border-black/20 z-10"></div>
+                    <img alt="CCTV Feed" class="w-full h-full object-cover opacity-80 grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVnwHQRkvIOb2eQ-2DhJu4kPVynapAsZLW1uHERHOlRd2smlYXzDgXfgnlnac0QTVfW5EIuoMc1L6If_iDgULKgDbpeFvmKNlsqAF3ULbAqSOFCdREOz1Z-cssHZsDEYxSOlerKtXo_bsxdMlp7-7wVhuXLnKe95Iq1KLvUAX2thFFx0uo3VKPnyMTETK5XMM0dOVfsZO77xyPdCI0kOn7wZjKo24yZqTPQLYxFIBoe9Yv-_j2F1ETEGx7McW5a2kBgnMCu1p2rkJY"/>
+                    
+                    <!-- HUD Elements -->
+                    <div class="absolute top-4 left-4 z-20 flex items-center gap-3 bg-black/60 px-3 py-1.5 backdrop-blur-sm border border-primary/40">
+                        <span class="w-3 h-3 bg-red-600 blinking-dot"></span>
+                        <span class="font-mono text-xs tracking-[0.2em] text-white">CAM-01 EN VIVO</span>
+                    </div>
+                    <div class="absolute top-4 right-4 z-20 flex flex-col items-end gap-1 font-mono text-[10px] text-primary">
+                        <span>ISO 800</span>
+                        <span>F/2.8</span>
+                        <span>60 FPS</span>
+                    </div>
+                    
+                    <!-- Bottom Metadata Bar -->
+                    <div class="absolute bottom-0 left-0 right-0 bg-surface-container-lowest/90 border-t border-primary/30 p-4 flex justify-between items-center z-20">
+                        <div class="flex gap-8 font-mono text-xs text-on-surface/80">
+                            <div class="flex flex-col">
+                                <span class="text-[8px] opacity-40">COORDENADAS</span>
+                                <span>34.0522° N, 118.2437° W</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[8px] opacity-40">CALIDAD_STREAM</span>
+                                <span class="text-primary">4K_UHD_ENCRYPTED</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
+                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">fullscreen</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION: HISTORY TABLE -->
+                <div class="bg-surface-container-low border border-outline flex flex-col min-h-0 flex-1">
+                    <div class="p-4 border-b border-outline flex justify-between items-center bg-surface-container shrink-0">
+                        <h3 class="font-headline font-extrabold text-sm tracking-tighter uppercase">Historial de Actividad</h3>
+                        <div class="flex gap-4">
+                            <span class="font-mono text-[10px] text-on-surface/40">FILTRAR POR: <span class="text-primary underline cursor-pointer">TODOS</span></span>
+                            <span class="font-mono text-[10px] text-on-surface/40">EXPORTAR .LOG</span>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-surface-container-high z-10">
+                                <tr>
+                                    <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Fecha</th>
+                                    <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Hora</th>
+                                    <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Evento</th>
+                                    <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Severidad</th>
+                                    <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline/10 text-on-surface/80">
+                                <tr class="hover:bg-primary/10 transition-none group">
+                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
+                                    <td class="p-4 font-mono text-sm text-primary">23:40:12</td>
+                                    <td class="p-4 font-body text-sm">Acceso concedido: ADMIN_01</td>
+                                    <td class="p-4"><span class="px-2 py-0.5 bg-green-900/40 text-green-400 text-[10px] font-mono border border-green-500/30">BAJA</span></td>
+                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
+                                </tr>
+                                <tr class="bg-surface-container-high/30 hover:bg-primary/10 transition-none group">
+                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
+                                    <td class="p-4 font-mono text-sm text-primary">23:38:45</td>
+                                    <td class="p-4 font-body text-sm">Movimiento detectado: PASILLO_NORTE</td>
+                                    <td class="p-4"><span class="px-2 py-0.5 bg-yellow-900/40 text-yellow-400 text-[10px] font-mono border border-yellow-500/30">MEDIA</span></td>
+                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
+                                </tr>
+                                <tr class="hover:bg-primary/10 transition-none group">
+                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
+                                    <td class="p-4 font-mono text-sm text-primary">23:30:00</td>
+                                    <td class="p-4 font-body text-sm text-error">Alarma activada: SECTOR_07_B</td>
+                                    <td class="p-4"><span class="px-2 py-0.5 bg-error-container text-white text-[10px] font-mono border border-error">CRÍTICA</span></td>
+                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
+                                </tr>
+                                <tr class="bg-surface-container-high/30 hover:bg-primary/10 transition-none group">
+                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
+                                    <td class="p-4 font-mono text-sm text-primary">23:25:12</td>
+                                    <td class="p-4 font-body text-sm">Reinicio de módulo de red</td>
+                                    <td class="p-4"><span class="px-2 py-0.5 bg-blue-900/40 text-blue-400 text-[10px] font-mono border border-blue-500/30">INFO</span></td>
+                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
+                                </tr>
+                                <tr class="hover:bg-primary/10 transition-none group">
+                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
+                                    <td class="p-4 font-mono text-sm text-primary">23:15:04</td>
+                                    <td class="p-4 font-body text-sm">Desconexión temporal de CAM-04</td>
+                                    <td class="p-4"><span class="px-2 py-0.5 bg-yellow-900/40 text-yellow-400 text-[10px] font-mono border border-yellow-500/30">MEDIA</span></td>
+                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer Security Token -->
+    <footer class="p-4 border-t border-outline/10 flex justify-between items-center text-[10px] font-mono text-on-surface/30 shrink-0">
+        <div>© 2024 RB_SECURITY_PROTOCOLS // ALL_RIGHTS_RESERVED</div>
+        <div class="flex gap-4">
+            <span>UPTIME: <span id="uptime-counter">000:00:00</span></span>
+            <span>TOKEN: 8f-2a-c4-09-e1-ff</span>
+        </div>
+    </footer>
+
+    <!-- Main Logic -->
+    <script src="script.js"></script>
+</body>
+</html>

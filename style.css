@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════
+   SENTINEL_LOGIC_V1 — Custom Styles
+   ═══════════════════════════════════════════════════ */
+
+/* Material Icons baseline */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ─── Custom Scrollbar (industrial feel) ──────────── */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: #131313;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2563eb;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #2563eb #131313;
+}
+
+/* ─── Blinking Dot Animation ──────────────────────── */
+.blinking-dot {
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .3; }
+}
+
+/* ─── Body / Layout ───────────────────────────────── */
+body {
+    scrollbar-gutter: stable;
+}
+
+
+/* ─── Row flash on insert ─────────────────────────── */
+tbody tr {
+    transition: background-color 0.6s ease-out;
+}
+
+/* ─── Smooth scroll for table container ───────────── */
+.overflow-y-auto {
+    scroll-behavior: smooth;
+}
+
+
+/* ─── Selection highlight ─────────────────────────── */
+::selection {
+    background: #2563eb;
+    color: white;
+}
