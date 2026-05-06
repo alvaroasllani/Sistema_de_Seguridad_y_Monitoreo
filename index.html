@@ -104,11 +104,16 @@
                     <span id="system-clock" class="font-mono text-lg text-on-surface leading-none">00:00:00</span>
                 </div>
                 <div class="h-8 w-px bg-outline/30"></div>
+                <!-- Estado del Sistema Local -->
                 <div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-outline/20">
                     <span class="w-2 h-2 bg-green-500 blinking-dot"></span>
                     <span class="text-[10px] tracking-widest text-on-surface">SISTEMA ONLINE</span>
                 </div>
-            </div>
+                <!-- Estado MQTT -->
+                <div id="mqtt-status-container" class="flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-outline/20 transition-colors">
+                    <span id="mqtt-status-dot" class="w-2 h-2 bg-red-500"></span>
+                    <span id="mqtt-status-text" class="text-[10px] tracking-widest text-on-surface">MQTT DESC.</span>
+                </div>
             </div>
         </div>
     </header>
@@ -117,6 +122,71 @@
     <main class="flex-1 p-6 overflow-visible">
         <div class="grid grid-cols-12 gap-6 max-w-[1600px] mx-auto h-full">
             
+            <!-- SECTION: SENSORES -->
+            <section class="col-span-12 bg-surface-container-low border border-outline p-4 flex flex-wrap justify-between gap-4">
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SM1</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">P. Principal</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SM1" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SM1" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SP</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Torre</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SP" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SP" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SM3</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Sala Máq.</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SM3" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SM3" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SM2</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Gabinete</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SM2" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SM2" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SV</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Vibración</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SV" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SV" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SH1</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Bat. 1</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SH1" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SH1" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+                <div class="w-px bg-outline/30 hidden md:block"></div>
+                <div class="flex flex-col items-center justify-center min-w-[80px]">
+                    <span class="font-mono text-[10px] text-primary font-bold">SH2</span>
+                    <span class="font-mono text-[8px] text-on-surface/60 uppercase">Bat. 2</span>
+                    <div class="flex items-center gap-1 mt-1">
+                        <span id="sensor-dot-SH2" class="w-2 h-2 bg-surface-container-highest rounded-full"></span>
+                        <span id="sensor-text-SH2" class="font-mono text-[9px] text-on-surface/40 uppercase">S/D</span>
+                    </div>
+                </div>
+            </section>
             <!-- SECTION: CONTROL & STATUS -->
             <section class="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-hidden">
                 <div class="bg-surface-container-low border border-outline p-6 flex flex-col gap-4 overflow-y-auto">
@@ -174,10 +244,44 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bg-surface-container-lowest p-3 border-l-4 border-primary mt-auto">
+                    <div class="bg-surface-container-lowest p-3 border-l-4 border-primary mt-auto mb-4">
                         <div class="flex gap-3">
                             <span class="material-symbols-outlined text-primary text-sm">info</span>
                             <span id="last-modified" class="font-mono text-[10px] leading-tight text-on-surface/80">ÚLTIMA MODIFICACIÓN: ADMIN_TECH EN 2024-05-20 22:15</span>
+                        </div>
+                    </div>
+
+                    <!-- MODO MANTENIMIENTO -->
+                    <div class="border border-outline/30 bg-surface-container p-4 mt-2">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-headline font-bold text-xs uppercase tracking-tighter text-on-surface">Mantenimiento</h4>
+                            <div class="flex gap-2">
+                                <button id="btn-mant-on" class="px-3 py-1 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all">ON</button>
+                                <button id="btn-mant-off" class="px-3 py-1 font-mono text-[10px] border border-primary/50 bg-primary/20 text-primary uppercase transition-all">OFF</button>
+                            </div>
+                        </div>
+                        <select id="mant-level" class="w-full bg-surface-container-lowest border border-outline/30 text-on-surface font-mono text-xs p-2 mb-3 outline-none">
+                            <option value="M1">M1: Acceso General (SM1, SP, SM3)</option>
+                            <option value="M2">M2: Trabajo Gabinete (SM2, SV)</option>
+                            <option value="M3">M3: Baterías (SH1, SH2)</option>
+                        </select>
+                        <div class="flex justify-between items-center bg-surface-container-lowest border border-outline/20 p-2">
+                            <span class="font-mono text-[10px] text-on-surface/60">TIEMPO RESTANTE</span>
+                            <span id="mant-timer" class="font-mono text-sm text-primary">00:00</span>
+                        </div>
+                    </div>
+
+                    <!-- ALARMAS ACTIVAS -->
+                    <div class="border border-error/50 bg-error-container/10 p-4 mt-2 flex flex-col gap-3">
+                        <div class="flex justify-between items-center border-b border-error/30 pb-2">
+                            <h4 class="font-headline font-bold text-xs uppercase tracking-tighter text-error flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px]">warning</span> Alarmas Activas
+                            </h4>
+                            <button id="btn-reset-all" class="font-mono text-[9px] text-error hover:text-white border border-error/30 hover:bg-error px-2 py-0.5 transition-colors">RESET ALL</button>
+                        </div>
+                        <div id="active-alarms-list" class="flex flex-col gap-2">
+                            <div class="font-mono text-[10px] text-on-surface/50 text-center py-2">SIN ALARMAS ACTIVAS</div>
+                            <!-- Alarm items will be injected here -->
                         </div>
                     </div>
                 </div>
@@ -188,7 +292,7 @@
                 <div class="relative bg-black aspect-video border-2 border-primary overflow-hidden group shrink-0">
                     <!-- CCTV Meta Overlay -->
                     <div class="absolute inset-0 pointer-events-none border-[12px] border-black/20 z-10"></div>
-                    <img alt="CCTV Feed" class="w-full h-full object-cover opacity-80 grayscale contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVnwHQRkvIOb2eQ-2DhJu4kPVynapAsZLW1uHERHOlRd2smlYXzDgXfgnlnac0QTVfW5EIuoMc1L6If_iDgULKgDbpeFvmKNlsqAF3ULbAqSOFCdREOz1Z-cssHZsDEYxSOlerKtXo_bsxdMlp7-7wVhuXLnKe95Iq1KLvUAX2thFFx0uo3VKPnyMTETK5XMM0dOVfsZO77xyPdCI0kOn7wZjKo24yZqTPQLYxFIBoe9Yv-_j2F1ETEGx7McW5a2kBgnMCu1p2rkJY"/>
+                    <img id="cam-feed" alt="CCTV Feed" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVnwHQRkvIOb2eQ-2DhJu4kPVynapAsZLW1uHERHOlRd2smlYXzDgXfgnlnac0QTVfW5EIuoMc1L6If_iDgULKgDbpeFvmKNlsqAF3ULbAqSOFCdREOz1Z-cssHZsDEYxSOlerKtXo_bsxdMlp7-7wVhuXLnKe95Iq1KLvUAX2thFFx0uo3VKPnyMTETK5XMM0dOVfsZO77xyPdCI0kOn7wZjKo24yZqTPQLYxFIBoe9Yv-_j2F1ETEGx7McW5a2kBgnMCu1p2rkJY"/>
                     
                     <!-- HUD Elements -->
                     <div class="absolute top-4 left-4 z-20 flex items-center gap-3 bg-black/60 px-3 py-1.5 backdrop-blur-sm border border-primary/40">
@@ -205,8 +309,11 @@
                     <div class="absolute bottom-0 left-0 right-0 bg-surface-container-lowest/90 border-t border-primary/30 p-4 flex justify-between items-center z-20">
                         <div class="flex gap-8 font-mono text-xs text-on-surface/80">
                             <div class="flex flex-col">
-                                <span class="text-[8px] opacity-40">COORDENADAS</span>
-                                <span>34.0522° N, 118.2437° W</span>
+                                <span class="text-[8px] opacity-40">IP CAMARA</span>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="cam-ip" value="192.168.1.100" class="bg-transparent border-b border-outline/50 text-xs text-on-surface outline-none w-24">
+                                    <button id="btn-update-cam" class="px-2 py-0.5 border border-primary/30 text-[9px] hover:bg-primary/20">SET</button>
+                                </div>
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-[8px] opacity-40">CALIDAD_STREAM</span>
@@ -295,6 +402,8 @@
     </footer>
 
     <!-- Main Logic -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="mqtt-client.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

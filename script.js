@@ -19,9 +19,199 @@ document.addEventListener('DOMContentLoaded', () => {
     initSystemToggle();
     initPrimaryButtons();
     initPeripherals();
-    // Set initial peripheral UI (all OFF)
+    initMaintenance();
+    initCamera();
+    
+    // Connect MQTT when page loads
+    window.mqttClient.onConnect(() => {
+        const dot = document.getElementById('mqtt-status-dot');
+        const text = document.getElementById('mqtt-status-text');
+        const container = document.getElementById('mqtt-status-container');
+        dot.className = 'w-2 h-2 bg-green-500';
+        text.textContent = 'MQTT CONN.';
+        container.className = 'flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-green-500/50 transition-colors';
+        addActivityLog('Conectado al broker MQTT local', 'INFO');
+    });
+
+    window.mqttClient.onDisconnect(() => {
+        const dot = document.getElementById('mqtt-status-dot');
+        const text = document.getElementById('mqtt-status-text');
+        const container = document.getElementById('mqtt-status-container');
+        dot.className = 'w-2 h-2 bg-red-500';
+        text.textContent = 'MQTT DESC.';
+        container.className = 'flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-red-500/50 transition-colors';
+        addActivityLog('Desconectado del broker MQTT', 'MEDIA');
+    });
+
+    window.mqttClient.onSensor((sensor, payload) => {
+        updateSensorUI(sensor, payload);
+    });
+
+    window.mqttClient.onAlarma((data) => {
+        addActiveAlarm(data);
+    });
+
+    window.mqttClient.onActuador((actuador, payload) => {
+        // payload = "ON" or "OFF"
+        const isOn = payload === 'ON';
+        if (actuador === 'AL') state.foco = isOn;
+        if (actuador === 'AM') state.chapa = isOn;
+        if (actuador === 'AS') state.alarma = isOn;
+        refreshPeripheralUI();
+    });
+
+    window.mqttClient.connect();
+
+    // Set initial peripheral UI
     refreshPeripheralUI();
     refreshPrimaryButtonsUI();
+});
+
+// ─── Camera Setup ──────────────────────────────────────────────
+function initCamera() {
+    const btnUpdateCam = document.getElementById('btn-update-cam');
+    const inputCamIp = document.getElementById('cam-ip');
+    const camFeed = document.getElementById('cam-feed');
+
+    btnUpdateCam.addEventListener('click', () => {
+        const ip = inputCamIp.value.trim();
+        if (ip) {
+            camFeed.src = `http://${ip}:81/stream`;
+            addActivityLog(`Stream de cámara actualizado a: ${ip}`, 'INFO');
+        }
+    });
+}
+
+// ─── Sensors UI ────────────────────────────────────────────────
+function updateSensorUI(sensor, status) {
+    const dot = document.getElementById(`sensor-dot-${sensor}`);
+    const text = document.getElementById(`sensor-text-${sensor}`);
+    if (!dot || !text) return;
+
+    status = status.toUpperCase();
+    
+    // Asumiendo que 'ABIERTO', 'ACTIVO', 'GOLPE' son estados de alerta
+    const isAlert = status === 'ABIERTO' || status === 'ACTIVO' || status === 'GOLPE' || status === 'ERROR';
+    const isNormal = status === 'CERRADO' || status === 'INACTIVO' || status === 'OK';
+
+    text.textContent = status;
+
+    if (isAlert) {
+        dot.className = 'w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)]';
+        text.className = 'font-mono text-[9px] text-red-400 uppercase font-bold';
+    } else if (isNormal) {
+        dot.className = 'w-2 h-2 bg-green-500 rounded-full';
+        text.className = 'font-mono text-[9px] text-green-400 uppercase';
+    } else {
+        dot.className = 'w-2 h-2 bg-surface-container-highest rounded-full';
+        text.className = 'font-mono text-[9px] text-on-surface/40 uppercase';
+    }
+}
+
+// ─── Maintenance Mode ──────────────────────────────────────────
+let mantInterval = null;
+function initMaintenance() {
+    const btnOn = document.getElementById('btn-mant-on');
+    const btnOff = document.getElementById('btn-mant-off');
+    const selectLevel = document.getElementById('mant-level');
+    const timerDisplay = document.getElementById('mant-timer');
+
+    let mantTimeLeft = 0;
+
+    btnOn.addEventListener('click', () => {
+        const level = selectLevel.value;
+        const duration = 600; // 10 mins
+        window.mqttClient.publishMaintenance(level, duration);
+        
+        btnOn.className = 'px-3 py-1 font-mono text-[10px] border border-yellow-500 text-yellow-500 bg-yellow-500/20 font-bold uppercase transition-all shadow-[0_0_10px_rgba(234,179,8,0.3)]';
+        btnOff.className = 'px-3 py-1 font-mono text-[10px] border border-outline/30 bg-surface-container-lowest text-on-surface/40 uppercase transition-all hover:text-on-surface/80';
+        selectLevel.disabled = true;
+
+        mantTimeLeft = duration;
+        clearInterval(mantInterval);
+        mantInterval = setInterval(() => {
+            mantTimeLeft--;
+            if (mantTimeLeft <= 0) {
+                clearInterval(mantInterval);
+                btnOff.click();
+            } else {
+                const m = Math.floor(mantTimeLeft / 60);
+                const s = mantTimeLeft % 60;
+                timerDisplay.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }
+        }, 1000);
+        
+        addActivityLog(`Modo Mantenimiento ${level} Activado`, 'MEDIA');
+    });
+
+    btnOff.addEventListener('click', () => {
+        window.mqttClient.publishMaintenanceOff();
+        
+        btnOn.className = 'px-3 py-1 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all hover:text-on-surface/80';
+        btnOff.className = 'px-3 py-1 font-mono text-[10px] border border-primary/50 bg-primary/20 text-primary font-bold uppercase transition-all';
+        selectLevel.disabled = false;
+        
+        clearInterval(mantInterval);
+        timerDisplay.textContent = '00:00';
+        addActivityLog(`Modo Mantenimiento Desactivado`, 'INFO');
+    });
+}
+
+// ─── Active Alarms ─────────────────────────────────────────────
+const activeAlarmsMap = new Map();
+
+function addActiveAlarm(data) {
+    // data = { alarma: 3, nombre: "...", estado: "activa", timestamp: "..." }
+    const list = document.getElementById('active-alarms-list');
+    
+    if (data.estado === "inactiva" || data.estado === "reset") {
+        activeAlarmsMap.delete(data.alarma);
+        renderActiveAlarms();
+        return;
+    }
+
+    activeAlarmsMap.set(data.alarma, data);
+    renderActiveAlarms();
+    
+    addActivityLog(`Alarma ${data.alarma}: ${data.nombre}`, 'CRÍTICA');
+}
+
+function renderActiveAlarms() {
+    const list = document.getElementById('active-alarms-list');
+    list.innerHTML = '';
+    
+    if (activeAlarmsMap.size === 0) {
+        list.innerHTML = '<div class="font-mono text-[10px] text-on-surface/50 text-center py-2">SIN ALARMAS ACTIVAS</div>';
+        return;
+    }
+
+    activeAlarmsMap.forEach((alarm, id) => {
+        const div = document.createElement('div');
+        div.className = 'bg-error-container/20 border border-error/40 p-2 flex justify-between items-center';
+        div.innerHTML = `
+            <div class="flex flex-col">
+                <span class="font-mono text-[10px] font-bold text-error uppercase">ALARMA ${alarm.alarma}</span>
+                <span class="font-body text-[11px] text-on-surface/90">${alarm.nombre}</span>
+                <span class="font-mono text-[8px] text-on-surface/50 mt-1">${alarm.timestamp || new Date().toLocaleTimeString()}</span>
+            </div>
+            <button onclick="window.mqttClient.publishReset('ALARMA_${alarm.alarma}')" class="px-2 py-1 bg-surface-container border border-outline/30 text-on-surface/80 text-[9px] font-mono hover:bg-error hover:text-white transition-colors">RESET</button>
+        `;
+        list.appendChild(div);
+    });
+}
+
+// Reset ALL event listener
+document.addEventListener('DOMContentLoaded', () => {
+    const btnResetAll = document.getElementById('btn-reset-all');
+    if (btnResetAll) {
+        btnResetAll.addEventListener('click', () => {
+            window.mqttClient.publishReset('ALL');
+            // Optimistically clear the UI
+            activeAlarmsMap.clear();
+            renderActiveAlarms();
+            addActivityLog('Comando RESET ALL enviado', 'MEDIA');
+        });
+    }
 });
 
 // ─── Clock ─────────────────────────────────────────────────────
@@ -141,49 +331,50 @@ function refreshPrimaryButtonsUI() {
 function initPeripherals() {
     // Foco Exterior
     document.getElementById('foco-on').addEventListener('click', () => {
-        if (state.foco) return;
+        window.mqttClient.publishActuator('AL', 'ON');
+        // El estado se actualizará cuando llegue el mensaje de MQTT, pero para feedback inmediato:
         state.foco = true;
         refreshPeripheralUI();
-        addActivityLog('Foco Exterior ENCENDIDO', 'BAJA');
+        addActivityLog('Comando: Foco Exterior ENCENDIDO', 'BAJA');
         updateLastModified();
     });
     document.getElementById('foco-off').addEventListener('click', () => {
-        if (!state.foco) return;
+        window.mqttClient.publishActuator('AL', 'OFF');
         state.foco = false;
         refreshPeripheralUI();
-        addActivityLog('Foco Exterior APAGADO', 'BAJA');
+        addActivityLog('Comando: Foco Exterior APAGADO', 'BAJA');
         updateLastModified();
     });
 
     // Chapa Eléctrica
     document.getElementById('chapa-abrir').addEventListener('click', () => {
-        if (state.chapa) return;
+        window.mqttClient.publishActuator('AM', 'ON');
         state.chapa = true;
         refreshPeripheralUI();
-        addActivityLog('Chapa Eléctrica ABIERTA', 'MEDIA');
+        addActivityLog('Comando: Chapa Eléctrica ABIERTA', 'MEDIA');
         updateLastModified();
     });
     document.getElementById('chapa-cerrar').addEventListener('click', () => {
-        if (!state.chapa) return;
+        window.mqttClient.publishActuator('AM', 'OFF');
         state.chapa = false;
         refreshPeripheralUI();
-        addActivityLog('Chapa Eléctrica CERRADA', 'BAJA');
+        addActivityLog('Comando: Chapa Eléctrica CERRADA', 'BAJA');
         updateLastModified();
     });
 
     // Alarma Sonora
     document.getElementById('alarma-activar').addEventListener('click', () => {
-        if (state.alarma) return;
+        window.mqttClient.publishActuator('AS', 'ON');
         state.alarma = true;
         refreshPeripheralUI();
-        addActivityLog('Alarma Sonora ACTIVADA', 'CRÍTICA');
+        addActivityLog('Comando: Alarma Sonora ACTIVADA', 'CRÍTICA');
         updateLastModified();
     });
     document.getElementById('alarma-desactivar').addEventListener('click', () => {
-        if (!state.alarma) return;
+        window.mqttClient.publishActuator('AS', 'OFF');
         state.alarma = false;
         refreshPeripheralUI();
-        addActivityLog('Alarma Sonora DESACTIVADA', 'MEDIA');
+        addActivityLog('Comando: Alarma Sonora DESACTIVADA', 'MEDIA');
         updateLastModified();
     });
 }
