@@ -1,0 +1,811 @@
+/*
+========================================================
+SISTEMA DE SEGURIDAD - RADIOBASE MQTT FINAL
+- WIFI + MQTT
+- CONTROL DESDE PAGINA WEB
+- MANTENIMIENTO DESDE MQTT
+- RESET GENERAL DESDE MQTT
+- CONTROL MANUAL AL / AS / AM
+- RESTRICCION DE AM SEGUN DOCUMENTO
+- SIN delay()
+========================================================
+*/
+
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+// ================= WIFI =================
+
+const char* ssid = "TIGO035853";
+const char* password = "12536881";
+
+// ================= MQTT =================
+
+const char* mqtt_server = "192.168.0.60";
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// ================= TOPICS =================
+
+const char* topicComandos = "radiobase/comandos";
+const char* topicEventos = "radiobase/eventos";
+
+// ================= PINES =================
+
+#define SM1 18
+#define SM2 19
+#define SM3 21
+
+#define SP 23
+#define SV 22
+
+#define SH1 25
+#define SH2 26
+
+#define RESET_AM 33
+
+#define AL 27
+#define AS 14
+#define AM 13
+
+// ================= ALARMAS =================
+
+bool alarma1 = false;
+bool alarma2 = false;
+bool alarma3 = false;
+bool alarma4 = false;
+bool alarma5 = false;
+bool alarma6 = false;
+
+// ================= VARIABLES =================
+
+bool sistemaArmado = false; // El sistema inicia desarmado por defecto
+
+bool esperandoPIR = false;
+bool verificandoSM2 = false;
+bool verificandoSM3 = false;
+
+bool estadoPIRAnterior = LOW;
+
+unsigned long tiempoSM1 = 0;
+unsigned long tiempoVentanaPIR = 0;
+unsigned long tiempoSM2 = 0;
+unsigned long tiempoSM3 = 0;
+
+unsigned long antiReboteReset = 0;
+
+bool cicloActivo = false;
+unsigned long inicioCiclo = 0;
+
+// ================= FILTRO HALL =================
+
+unsigned long tiempoEstableSH1 = 0;
+unsigned long tiempoEstableSH2 = 0;
+
+bool estadoAnteriorSH1 = HIGH;
+bool estadoAnteriorSH2 = HIGH;
+
+// ================= MANTENIMIENTO =================
+
+bool mantenimientoM1 = false;
+bool mantenimientoM2 = false;
+bool mantenimientoM3 = false;
+
+unsigned long inicioMantenimiento = 0;
+unsigned long duracionMantenimiento = 60000;
+
+unsigned long avisoTiempo = 0;
+
+// ================= CONTROL MANUAL =================
+
+bool manualAL = false;
+bool estadoManualAL = false;
+
+bool manualAS = false;
+bool estadoManualAS = false;
+
+bool manualAM = false;
+bool estadoManualAM = false;
+
+// ========================================================
+// WIFI
+// ========================================================
+
+void setup_wifi() {
+
+  Serial.println();
+  Serial.print("Conectando a WiFi");
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi conectado");
+  Serial.println(WiFi.localIP());
+}
+
+// ========================================================
+// MQTT RECIBIR MENSAJES
+// ========================================================
+
+void callback(char* topic, byte* payload, unsigned int length) {
+
+  String comando = "";
+
+  for (int i = 0; i < length; i++) {
+    comando += (char)payload[i];
+  }
+
+  Serial.print("Comando recibido: ");
+  Serial.println(comando);
+
+  procesarComando(comando);
+}
+
+// ========================================================
+// RECONECTAR MQTT
+// ========================================================
+
+void reconnect() {
+
+  while (!client.connected()) {
+
+    Serial.print("Conectando MQTT...");
+
+    if (client.connect("ESP32_RADIOBASE")) {
+
+      Serial.println(" conectado");
+
+      client.subscribe(topicComandos);
+
+      client.publish(topicEventos, "ESP32_CONECTADA");
+
+    } else {
+
+      Serial.print(" error=");
+      Serial.print(client.state());
+
+      Serial.println(" reintentando...");
+      delay(5000);
+    }
+  }
+}
+
+// ========================================================
+// PUBLICAR EVENTOS
+// ========================================================
+
+void enviarEvento(String mensaje) {
+
+  client.publish(topicEventos, mensaje.c_str());
+
+  Serial.println(mensaje);
+}
+
+// ========================================================
+// PERMISOS
+// ========================================================
+
+bool permitido(int zona) {
+
+  if (mantenimientoM3) return true;
+
+  if (mantenimientoM2) {
+
+    if (zona == 1 || zona == 2 ||
+        zona == 3 || zona == 4 ||
+        zona == 5) return true;
+  }
+
+  if (mantenimientoM1) {
+
+    if (zona == 1 || zona == 2 ||
+        zona == 3) return true;
+  }
+
+  return false;
+}
+
+// ========================================================
+// SETUP
+// ========================================================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  pinMode(SM1, INPUT_PULLUP);
+  pinMode(SM2, INPUT_PULLUP);
+  pinMode(SM3, INPUT_PULLUP);
+
+  pinMode(SP, INPUT);
+  pinMode(SV, INPUT);
+
+  pinMode(SH1, INPUT);
+  pinMode(SH2, INPUT);
+
+  pinMode(RESET_AM, INPUT_PULLUP);
+
+  pinMode(AL, OUTPUT);
+  pinMode(AS, OUTPUT);
+  pinMode(AM, OUTPUT);
+
+  digitalWrite(AL, LOW);
+  digitalWrite(AS, LOW);
+  digitalWrite(AM, LOW);
+
+  setup_wifi();
+
+  client.setServer(mqtt_server, 1883);
+  client.setCallback(callback);
+
+  Serial.println("================================");
+  Serial.println(" SISTEMA INICIADO ");
+  Serial.println("================================");
+}
+
+// ========================================================
+// LOOP
+// ========================================================
+
+void loop() {
+
+  if (!client.connected()) {
+    reconnect();
+  }
+
+  client.loop();
+
+  controlarMantenimiento();
+
+  if (sistemaArmado) {
+    verificarAlarma1();
+    verificarAlarma2();
+    verificarAlarma3();
+    verificarAlarma4();
+    verificarAlarma5();
+    verificarAlarma6();
+  }
+
+  // Reporte en vivo del sensor PIR (Independiente de la alarma 1)
+  bool estadoPIRActual = digitalRead(SP);
+  if (estadoPIRActual == HIGH && estadoPIRAnterior == LOW) {
+    enviarEvento("SP_ACTIVO");
+  } else if (estadoPIRActual == LOW && estadoPIRAnterior == HIGH) {
+    enviarEvento("SP_INACTIVO");
+  }
+  estadoPIRAnterior = estadoPIRActual;
+
+  controlarActuadores();
+  controlarResetAM();
+}
+
+// ========================================================
+// PROCESAR COMANDOS MQTT
+// ========================================================
+
+void procesarComando(String comando) {
+
+  // ================= SISTEMA =================
+  
+  if (comando == "SISTEMA_ON") {
+    sistemaArmado = true;
+    enviarEvento("SISTEMA_ARMADO");
+  }
+
+  if (comando == "SISTEMA_OFF") {
+    sistemaArmado = false;
+    
+    // Apagar todas las alarmas
+    alarma1 = false; alarma2 = false; alarma3 = false;
+    alarma4 = false; alarma5 = false; alarma6 = false;
+    
+    // Apagar manuales
+    manualAL = false; estadoManualAL = false;
+    manualAS = false; estadoManualAS = false;
+    manualAM = false; estadoManualAM = false;
+    
+    cicloActivo = false;
+    
+    digitalWrite(AL, LOW);
+    digitalWrite(AS, LOW);
+    digitalWrite(AM, LOW);
+
+    enviarEvento("SISTEMA_DESARMADO");
+  }
+
+  // ================= RESET =================
+
+  if (comando == "RESET") {
+
+    alarma1 = false;
+    alarma2 = false;
+    alarma3 = false;
+    alarma4 = false;
+    alarma5 = false;
+    alarma6 = false;
+
+    digitalWrite(AL, LOW);
+    digitalWrite(AS, LOW);
+    digitalWrite(AM, LOW);
+
+    cicloActivo = false;
+
+    enviarEvento("RESET_GENERAL");
+  }
+
+  // ================= MANTENIMIENTO =================
+
+  if (comando == "MANTENIMIENTO1") {
+
+    mantenimientoM1 = true;
+    mantenimientoM2 = false;
+    mantenimientoM3 = false;
+
+    inicioMantenimiento = millis();
+
+    enviarEvento("MODO_M1_ACTIVADO");
+  }
+
+  if (comando == "MANTENIMIENTO2") {
+
+    mantenimientoM1 = false;
+    mantenimientoM2 = true;
+    mantenimientoM3 = false;
+
+    inicioMantenimiento = millis();
+
+    enviarEvento("MODO_M2_ACTIVADO");
+  }
+
+  if (comando == "MANTENIMIENTO3") {
+
+    mantenimientoM1 = false;
+    mantenimientoM2 = false;
+    mantenimientoM3 = true;
+
+    inicioMantenimiento = millis();
+
+    enviarEvento("MODO_M3_ACTIVADO");
+  }
+
+  if (comando == "FINMANTENIMIENTO") {
+
+    mantenimientoM1 = false;
+    mantenimientoM2 = false;
+    mantenimientoM3 = false;
+
+    enviarEvento("MANTENIMIENTO_FINALIZADO");
+  }
+
+  // ================= CONTROL MANUAL AL =================
+
+  if (comando == "AL_ON") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+    manualAL = true;
+    estadoManualAL = true;
+
+    enviarEvento("AL_MANUAL_ON");
+  }
+
+  if (comando == "AL_OFF") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+    manualAL = true;
+    estadoManualAL = false;
+
+    enviarEvento("AL_MANUAL_OFF");
+  }
+
+  // ================= CONTROL MANUAL AS =================
+
+  if (comando == "AS_ON") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+    manualAS = true;
+    estadoManualAS = true;
+
+    enviarEvento("AS_MANUAL_ON");
+  }
+
+  if (comando == "AS_OFF") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+    manualAS = true;
+    estadoManualAS = false;
+
+    enviarEvento("AS_MANUAL_OFF");
+  }
+
+  // ================= CONTROL MANUAL AM =================
+
+  if (comando == "AM_ON") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+    manualAM = true;
+    estadoManualAM = true;
+
+    enviarEvento("AM_MANUAL_ON");
+  }
+
+  // ====================================================
+  // RESTRICCION IMPORTANTE
+  // ====================================================
+
+  if (comando == "AM_OFF") {
+    if (!sistemaArmado) { enviarEvento("ERROR_SISTEMA_DESARMADO"); return; }
+
+    if (!alarma3 ||
+        mantenimientoM1 ||
+        mantenimientoM2 ||
+        mantenimientoM3) {
+
+      manualAM = true;
+      estadoManualAM = false;
+
+      alarma3 = false;
+
+      enviarEvento("AM_MANUAL_OFF");
+
+    } else {
+
+      enviarEvento("ERROR_ALARMA3_ACTIVA");
+    }
+  }
+
+  // ================= VOLVER AUTOMATICO =================
+
+  if (comando == "AUTO") {
+
+    manualAL = false;
+    manualAS = false;
+    manualAM = false;
+
+    enviarEvento("MODO_AUTOMATICO");
+  }
+}
+
+// ========================================================
+// MANTENIMIENTO
+// ========================================================
+
+void controlarMantenimiento() {
+
+  if (mantenimientoM1 ||
+      mantenimientoM2 ||
+      mantenimientoM3) {
+
+    unsigned long tiempoRestante =
+      (duracionMantenimiento -
+       (millis() - inicioMantenimiento)) / 1000;
+
+    if (millis() - avisoTiempo > 1000) {
+
+      avisoTiempo = millis();
+
+      Serial.print("Tiempo restante: ");
+      Serial.println(tiempoRestante);
+    }
+
+    if (millis() - inicioMantenimiento >= duracionMantenimiento) {
+
+      mantenimientoM1 = false;
+      mantenimientoM2 = false;
+      mantenimientoM3 = false;
+
+      enviarEvento("MANTENIMIENTO_FINALIZADO_AUTO");
+    }
+  }
+}
+
+// ========================================================
+// ALARMA 1
+// ========================================================
+
+void verificarAlarma1() {
+
+  if (digitalRead(SM1) == HIGH &&
+      !esperandoPIR &&
+      !alarma1) {
+
+    tiempoSM1 = millis();
+    esperandoPIR = true;
+
+    enviarEvento("SM1_ABIERTO");
+  }
+
+  if (esperandoPIR) {
+
+    if (digitalRead(SM1) == LOW) {
+
+      esperandoPIR = false;
+      return;
+    }
+
+    if ((millis() - tiempoSM1 >= 3000) &&
+        tiempoVentanaPIR == 0) {
+
+      tiempoVentanaPIR = millis();
+    }
+
+    if (tiempoVentanaPIR > 0) {
+
+      if (digitalRead(SP) == HIGH) {
+
+        if (!permitido(1) ||
+            !permitido(2)) {
+
+          alarma1 = true;
+
+          enviarEvento("ALARMA1_INTRUSION");
+        }
+
+        esperandoPIR = false;
+        tiempoVentanaPIR = 0;
+      }
+
+      if (millis() - tiempoVentanaPIR >= 10000) {
+
+        esperandoPIR = false;
+        tiempoVentanaPIR = 0;
+      }
+    }
+  }
+}
+
+// ========================================================
+// ALARMA 2
+// ========================================================
+
+void verificarAlarma2() {
+
+  if (digitalRead(SM3) == HIGH &&
+      !verificandoSM3 &&
+      !alarma2) {
+
+    tiempoSM3 = millis();
+    verificandoSM3 = true;
+  }
+
+  if (verificandoSM3) {
+
+    if (digitalRead(SM3) == LOW) return;
+
+    if (millis() - tiempoSM3 >= 3000) {
+
+      if (!permitido(3)) {
+
+        alarma2 = true;
+
+        enviarEvento("ALARMA2_SALA_MAQUINAS");
+      }
+
+      verificandoSM3 = false;
+    }
+  }
+}
+
+// ========================================================
+// ALARMA 3
+// ========================================================
+
+void verificarAlarma3() {
+
+  static int contador = 0;
+  static unsigned long inicio = 0;
+  static bool ultimo = HIGH;
+
+  int actual = digitalRead(SV);
+
+  if (ultimo == HIGH &&
+      actual == LOW &&
+      !alarma3) {
+
+    if (contador == 0) inicio = millis();
+
+    contador++;
+  }
+
+  if ((inicio > 0) &&
+      (millis() - inicio <= 3000) &&
+      (contador >= 3) &&
+      !alarma3) {
+
+    if (!permitido(5)) {
+
+      alarma3 = true;
+
+      digitalWrite(AM, HIGH);
+
+      enviarEvento("ALARMA3_FORCEJEO");
+    }
+
+    contador = 0;
+    inicio = 0;
+  }
+
+  if ((inicio > 0) &&
+      (millis() - inicio > 3000)) {
+
+    contador = 0;
+    inicio = 0;
+  }
+
+  ultimo = actual;
+}
+
+// ========================================================
+// ALARMA 4
+// ========================================================
+
+void verificarAlarma4() {
+
+  if (digitalRead(SM2) == HIGH) {
+
+    if (!verificandoSM2 && !alarma4) {
+
+      tiempoSM2 = millis();
+      verificandoSM2 = true;
+    }
+
+    if (verificandoSM2 && millis() - tiempoSM2 >= 1000) {
+
+      if (!permitido(4) && !alarma4) {
+
+        alarma4 = true;
+
+        enviarEvento("ALARMA4_GABINETE");
+      }
+
+      verificandoSM2 = false;
+    }
+  } else {
+    // Si se cerró el gabinete
+    verificandoSM2 = false;
+    if (alarma4) {
+      alarma4 = false;
+      enviarEvento("GABINETE_CERRADO");
+    }
+  }
+}
+
+// ========================================================
+// ALARMA 5
+// ========================================================
+
+void verificarAlarma5() {
+
+  bool lectura = digitalRead(SH1);
+
+  if (lectura != estadoAnteriorSH1) {
+
+    tiempoEstableSH1 = millis();
+    estadoAnteriorSH1 = lectura;
+  }
+
+  if ((millis() - tiempoEstableSH1) > 100) {
+
+    if (lectura == LOW) {
+
+      if (!permitido(6) && !alarma5) {
+
+        alarma5 = true;
+
+        enviarEvento("ALARMA5_BATERIA1");
+      }
+    } else {
+      // Limpiar la alarma automáticamente si la batería vuelve a su lugar
+      if (alarma5) {
+          alarma5 = false;
+          enviarEvento("BATERIA1_RESTAURADA");
+      }
+    }
+  }
+}
+
+// ========================================================
+// ALARMA 6
+// ========================================================
+
+void verificarAlarma6() {
+
+  bool lectura = digitalRead(SH2);
+
+  if (lectura != estadoAnteriorSH2) {
+
+    tiempoEstableSH2 = millis();
+    estadoAnteriorSH2 = lectura;
+  }
+
+  if ((millis() - tiempoEstableSH2) > 100) {
+
+    if (lectura == LOW) {
+
+      if (!permitido(7) && !alarma6) {
+
+        alarma6 = true;
+
+        enviarEvento("ALARMA6_BATERIA2");
+      }
+    } else {
+      // Limpiar la alarma automáticamente si la batería vuelve a su lugar
+      if (alarma6) {
+          alarma6 = false;
+          enviarEvento("BATERIA2_RESTAURADA");
+      }
+    }
+  }
+}
+
+// ========================================================
+// ACTUADORES
+// ========================================================
+
+void controlarActuadores() {
+
+  // ================= PRIORIDAD 1: BATERIAS (CRITICO) =================
+  if (alarma5 || alarma6) {
+    if (!cicloActivo) {
+      cicloActivo = true;
+      inicioCiclo = millis();
+    }
+    unsigned long t = millis() - inicioCiclo;
+    bool encendido = (t < 3000); // 3 segundos encendido, 2 apagado
+
+    digitalWrite(AL, encendido);
+    digitalWrite(AS, encendido);
+
+    if (t >= 5000) inicioCiclo = millis();
+  }
+  // ================= PRIORIDAD 2: GABINETE =================
+  else if (alarma4) {
+    if (!cicloActivo) {
+      cicloActivo = true;
+      inicioCiclo = millis();
+    }
+    unsigned long t = millis() - inicioCiclo;
+    bool encendido = (t < 3000);
+
+    digitalWrite(AL, encendido);
+    
+    // Sirena obedece a control manual si no hay alarma critica
+    digitalWrite(AS, manualAS ? estadoManualAS : LOW);
+
+    if (t >= 5000) inicioCiclo = millis();
+  }
+  // ================= PRIORIDAD 3: MANUAL =================
+  else {
+    cicloActivo = false;
+    
+    digitalWrite(AL, manualAL ? estadoManualAL : LOW);
+    digitalWrite(AS, manualAS ? estadoManualAS : LOW);
+  }
+
+  // Chapa AM se abre forzosamente si alarma 4 (gabinete) o alarma 3 (forcejeo) está activa
+  if (alarma4 || alarma3) {
+      digitalWrite(AM, HIGH);
+  } else {
+      digitalWrite(AM, manualAM ? estadoManualAM : LOW);
+  }
+}
+
+// ========================================================
+// RESET AM
+// ========================================================
+
+void controlarResetAM() {
+
+  if (digitalRead(RESET_AM) == LOW &&
+      millis() - antiReboteReset > 500) {
+
+    antiReboteReset = millis();
+
+    alarma3 = false;
+
+    digitalWrite(AM, LOW);
+
+    enviarEvento("RESET_AM");
+  }
+}

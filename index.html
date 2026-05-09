@@ -289,10 +289,10 @@
 
             <!-- SECTION: VIDEO MONITORING -->
             <section class="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
-                <div class="relative bg-black aspect-video border-2 border-primary overflow-hidden group shrink-0">
+                <div class="relative bg-black aspect-video border-2 border-primary overflow-hidden group shrink-0 flex items-center justify-center">
                     <!-- CCTV Meta Overlay -->
                     <div class="absolute inset-0 pointer-events-none border-[12px] border-black/20 z-10"></div>
-                    <img id="cam-feed" alt="CCTV Feed" class="w-full h-full object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVnwHQRkvIOb2eQ-2DhJu4kPVynapAsZLW1uHERHOlRd2smlYXzDgXfgnlnac0QTVfW5EIuoMc1L6If_iDgULKgDbpeFvmKNlsqAF3ULbAqSOFCdREOz1Z-cssHZsDEYxSOlerKtXo_bsxdMlp7-7wVhuXLnKe95Iq1KLvUAX2thFFx0uo3VKPnyMTETK5XMM0dOVfsZO77xyPdCI0kOn7wZjKo24yZqTPQLYxFIBoe9Yv-_j2F1ETEGx7McW5a2kBgnMCu1p2rkJY"/>
+                    <img id="cam-feed" alt="CCTV Feed" class="w-[240px] h-[240px] object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVnwHQRkvIOb2eQ-2DhJu4kPVynapAsZLW1uHERHOlRd2smlYXzDgXfgnlnac0QTVfW5EIuoMc1L6If_iDgULKgDbpeFvmKNlsqAF3ULbAqSOFCdREOz1Z-cssHZsDEYxSOlerKtXo_bsxdMlp7-7wVhuXLnKe95Iq1KLvUAX2thFFx0uo3VKPnyMTETK5XMM0dOVfsZO77xyPdCI0kOn7wZjKo24yZqTPQLYxFIBoe9Yv-_j2F1ETEGx7McW5a2kBgnMCu1p2rkJY"/>
                     
                     <!-- HUD Elements -->
                     <div class="absolute top-4 left-4 z-20 flex items-center gap-3 bg-black/60 px-3 py-1.5 backdrop-blur-sm border border-primary/40">
@@ -311,19 +311,19 @@
                             <div class="flex flex-col">
                                 <span class="text-[8px] opacity-40">IP CAMARA</span>
                                 <div class="flex items-center gap-2">
-                                    <input type="text" id="cam-ip" value="192.168.1.100" class="bg-transparent border-b border-outline/50 text-xs text-on-surface outline-none w-24">
+                                    <input type="text" id="cam-ip" value="192.168.0.161" class="bg-transparent border-b border-outline/50 text-xs text-on-surface outline-none w-32">
                                     <button id="btn-update-cam" class="px-2 py-0.5 border border-primary/30 text-[9px] hover:bg-primary/20">SET</button>
                                 </div>
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-[8px] opacity-40">CALIDAD_STREAM</span>
-                                <span class="text-primary">4K_UHD_ENCRYPTED</span>
+                                <span class="text-primary">240x240_MJPEG</span>
                             </div>
                         </div>
                         <div class="flex gap-2">
-                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
-                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
-                            <button class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">fullscreen</span></button>
+                            <button id="btn-cam-zoom" class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">zoom_in</span></button>
+                            <button id="btn-cam-photo" class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">photo_camera</span></button>
+                            <button id="btn-cam-fullscreen" class="p-2 hover:bg-primary/20 transition-none"><span class="material-symbols-outlined text-sm">fullscreen</span></button>
                         </div>
                     </div>
                 </div>

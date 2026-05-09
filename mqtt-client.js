@@ -3,15 +3,8 @@ const MQTT_CONFIG = {
     port: 9001,
     clientId: 'NOC_WEB_' + Math.random().toString(16).substring(2, 8),
     topics: {
-        sensores: 'radiobase/sensores/+',
-        alarmas: 'radiobase/alarmas',
-        actuadores: {
-            AM: 'radiobase/actuadores/AM',
-            AL: 'radiobase/actuadores/AL',
-            AS: 'radiobase/actuadores/AS'
-        },
-        mantenimiento: 'radiobase/mantenimiento',
-        reset: 'radiobase/reset'
+        eventos: 'radiobase/eventos',
+        comandos: 'radiobase/comandos'
     }
 };
 
@@ -44,11 +37,7 @@ class MqttClientHandler {
 
         this.client.on('connect', () => {
             console.log('Connected to MQTT broker!');
-            this.client.subscribe(MQTT_CONFIG.topics.sensores);
-            this.client.subscribe(MQTT_CONFIG.topics.alarmas);
-            this.client.subscribe(MQTT_CONFIG.topics.actuadores.AM);
-            this.client.subscribe(MQTT_CONFIG.topics.actuadores.AL);
-            this.client.subscribe(MQTT_CONFIG.topics.actuadores.AS);
+            this.client.subscribe(MQTT_CONFIG.topics.eventos);
             
             this.callbacks.onConnect.forEach(cb => cb());
         });
@@ -64,57 +53,48 @@ class MqttClientHandler {
 
         this.client.on('message', (topic, message) => {
             const payload = message.toString();
-            // console.log(`[MQTT] Mensaje recibido en ${topic}:`, payload);
+            console.log(`[MQTT] Evento recibido:`, payload);
             
-            if (topic.startsWith('radiobase/sensores/')) {
-                const sensor = topic.split('/').pop();
-                this.callbacks.onSensor.forEach(cb => cb(sensor, payload));
-            } else if (topic === MQTT_CONFIG.topics.alarmas) {
-                try {
-                    const data = JSON.parse(payload);
-                    this.callbacks.onAlarma.forEach(cb => cb(data));
-                } catch (e) {
-                    console.error('Error parseando JSON de alarma:', e);
+            if (topic === MQTT_CONFIG.topics.eventos) {
+                if (this.callbacks.onEvento) {
+                    this.callbacks.onEvento.forEach(cb => cb(payload));
                 }
-            } else if (topic.startsWith('radiobase/actuadores/')) {
-                const actuador = topic.split('/').pop();
-                this.callbacks.onActuador.forEach(cb => cb(actuador, payload));
             }
         });
     }
 
-    publishActuator(actuador, state) {
+    publishCommand(comando) {
         if (!this.client || !this.client.connected) return;
-        const topic = MQTT_CONFIG.topics.actuadores[actuador];
-        if (topic) {
-            this.client.publish(topic, state);
-            console.log(`[MQTT] Published to ${topic}: ${state}`);
-        }
+        this.client.publish(MQTT_CONFIG.topics.comandos, comando);
+        console.log(`[MQTT] Comando enviado: ${comando}`);
+    }
+
+    // Adaptadores para la interfaz actual:
+    publishActuator(actuador, state) {
+        // state "ON" o "OFF", actuador "AL", "AM", "AS"
+        this.publishCommand(`${actuador}_${state}`);
     }
 
     publishMaintenance(level, duration) {
-        if (!this.client || !this.client.connected) return;
-        const payload = JSON.stringify({ estado: 'ON', nivel: level, duracion: duration });
-        this.client.publish(MQTT_CONFIG.topics.mantenimiento, payload);
+        // level "M1", "M2", "M3"
+        if (level === 'M1') this.publishCommand('MANTENIMIENTO1');
+        else if (level === 'M2') this.publishCommand('MANTENIMIENTO2');
+        else if (level === 'M3') this.publishCommand('MANTENIMIENTO3');
     }
 
     publishMaintenanceOff() {
-        if (!this.client || !this.client.connected) return;
-        const payload = JSON.stringify({ estado: 'OFF' });
-        this.client.publish(MQTT_CONFIG.topics.mantenimiento, payload);
+        this.publishCommand('FINMANTENIMIENTO');
     }
 
     publishReset(target) {
-        if (!this.client || !this.client.connected) return;
-        this.client.publish(MQTT_CONFIG.topics.reset, target);
+        // El firmware actual solo tiene RESET general
+        this.publishCommand('RESET');
     }
 
     // Registro de callbacks
     onConnect(cb) { this.callbacks.onConnect.push(cb); }
     onDisconnect(cb) { this.callbacks.onDisconnect.push(cb); }
-    onSensor(cb) { this.callbacks.onSensor.push(cb); }
-    onAlarma(cb) { this.callbacks.onAlarma.push(cb); }
-    onActuador(cb) { this.callbacks.onActuador.push(cb); }
+    onEvento(cb) { if (!this.callbacks.onEvento) this.callbacks.onEvento = []; this.callbacks.onEvento.push(cb); }
 }
 
 window.mqttClient = new MqttClientHandler();

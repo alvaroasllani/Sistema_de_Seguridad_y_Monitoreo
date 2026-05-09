@@ -43,21 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
         addActivityLog('Desconectado del broker MQTT', 'MEDIA');
     });
 
-    window.mqttClient.onSensor((sensor, payload) => {
-        updateSensorUI(sensor, payload);
-    });
-
-    window.mqttClient.onAlarma((data) => {
-        addActiveAlarm(data);
-    });
-
-    window.mqttClient.onActuador((actuador, payload) => {
-        // payload = "ON" or "OFF"
-        const isOn = payload === 'ON';
-        if (actuador === 'AL') state.foco = isOn;
-        if (actuador === 'AM') state.chapa = isOn;
-        if (actuador === 'AS') state.alarma = isOn;
-        refreshPeripheralUI();
+    window.mqttClient.onEvento((evento) => {
+        procesarEventoESP32(evento);
     });
 
     window.mqttClient.connect();
@@ -72,12 +59,51 @@ function initCamera() {
     const btnUpdateCam = document.getElementById('btn-update-cam');
     const inputCamIp = document.getElementById('cam-ip');
     const camFeed = document.getElementById('cam-feed');
+    
+    // Controles de cámara
+    const btnZoom = document.getElementById('btn-cam-zoom');
+    const btnPhoto = document.getElementById('btn-cam-photo');
+    const btnFullscreen = document.getElementById('btn-cam-fullscreen');
+
+    let isZoomed = false;
 
     btnUpdateCam.addEventListener('click', () => {
         const ip = inputCamIp.value.trim();
         if (ip) {
             camFeed.src = `http://${ip}:81/stream`;
             addActivityLog(`Stream de cámara actualizado a: ${ip}`, 'INFO');
+        }
+    });
+
+    btnZoom.addEventListener('click', () => {
+        isZoomed = !isZoomed;
+        if (isZoomed) {
+            camFeed.style.transform = 'scale(1.5)';
+            camFeed.style.transition = 'transform 0.3s ease';
+            addActivityLog('Zoom de cámara activado', 'INFO');
+        } else {
+            camFeed.style.transform = 'scale(1)';
+            addActivityLog('Zoom de cámara desactivado', 'INFO');
+        }
+    });
+
+    btnPhoto.addEventListener('click', () => {
+        const ip = inputCamIp.value.trim();
+        if (ip) {
+            // Usa el endpoint nativo del ESP32-CAM para capturar foto en alta resolución
+            window.open(`http://${ip}/capture`, '_blank');
+            addActivityLog('Captura de foto solicitada', 'MEDIA');
+        }
+    });
+
+    btnFullscreen.addEventListener('click', () => {
+        const container = camFeed.parentElement; // El div de fondo negro
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().catch(err => {
+                console.error(`Error al intentar pantalla completa: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
         }
     });
 }
@@ -120,7 +146,7 @@ function initMaintenance() {
 
     btnOn.addEventListener('click', () => {
         const level = selectLevel.value;
-        const duration = 600; // 10 mins
+        const duration = 60; // 1 min
         window.mqttClient.publishMaintenance(level, duration);
         
         btnOn.className = 'px-3 py-1 font-mono text-[10px] border border-yellow-500 text-yellow-500 bg-yellow-500/20 font-bold uppercase transition-all shadow-[0_0_10px_rgba(234,179,8,0.3)]';
@@ -253,6 +279,14 @@ function initSystemToggle() {
         state.isArmed = !state.isArmed;
         updateSystemUI();
         refreshPrimaryButtonsUI();
+        
+        // Enviar comando al ESP32
+        if (state.isArmed) {
+            window.mqttClient.publishCommand('SISTEMA_ON');
+        } else {
+            window.mqttClient.publishCommand('SISTEMA_OFF');
+        }
+
         addActivityLog(
             state.isArmed ? 'Sistema Armado por operador' : 'Sistema Desactivado por operador',
             state.isArmed ? 'ALTA' : 'BAJA'
@@ -292,6 +326,7 @@ function initPrimaryButtons() {
         state.isArmed = true;
         updateSystemUI();
         refreshPrimaryButtonsUI();
+        window.mqttClient.publishCommand('SISTEMA_ON');
         addActivityLog('Sistema Armado vía botón ENCENDER', 'ALTA');
         updateLastModified();
     });
@@ -301,6 +336,7 @@ function initPrimaryButtons() {
         state.isArmed = false;
         updateSystemUI();
         refreshPrimaryButtonsUI();
+        window.mqttClient.publishCommand('SISTEMA_OFF');
         addActivityLog('Sistema Desactivado vía botón APAGAR', 'MEDIA');
         updateLastModified();
     });
@@ -494,4 +530,83 @@ function updateLastModified() {
     const dateStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().split(' ')[0].slice(0, 5);
     el.textContent = `ÚLTIMA MODIFICACIÓN: OPERADOR EN ${dateStr} ${timeStr}`;
+}
+
+// ─── ESP32 Event Processor ──────────────────────────────────────
+function procesarEventoESP32(evento) {
+    evento = evento.trim();
+
+    // Actualización de Sensores
+    if (evento === 'SM1_ABIERTO') updateSensorUI('SM1', 'ABIERTO');
+    if (evento === 'SP_ACTIVO') updateSensorUI('SP', 'ACTIVO');
+    if (evento === 'SP_INACTIVO') updateSensorUI('SP', 'INACTIVO');
+    
+    // Mapeo de Alarmas según message.txt
+    const alarmasMap = {
+        'ALARMA1_INTRUSION': { alarma: 1, nombre: 'Intrusión de ingreso a radiobase' },
+        'ALARMA2_SALA_MAQUINAS': { alarma: 2, nombre: 'Apertura sala de máquinas' },
+        'ALARMA3_FORCEJEO': { alarma: 3, nombre: 'Forcejeo en gabinete' },
+        'ALARMA4_GABINETE': { alarma: 4, nombre: 'Apertura de gabinete' },
+        'ALARMA5_BATERIA1': { alarma: 5, nombre: 'Extracción Batería 1' },
+        'ALARMA6_BATERIA2': { alarma: 6, nombre: 'Extracción Batería 2' }
+    };
+    
+    if (alarmasMap[evento]) {
+        addActiveAlarm({
+            ...alarmasMap[evento],
+            estado: 'activa',
+            timestamp: new Date().toLocaleTimeString()
+        });
+    }
+
+    // Confirmación de Actuadores y Controles
+    if (evento === 'AL_MANUAL_ON') { state.foco = true; refreshPeripheralUI(); }
+    if (evento === 'AL_MANUAL_OFF') { state.foco = false; refreshPeripheralUI(); }
+    if (evento === 'AS_MANUAL_ON') { state.alarma = true; refreshPeripheralUI(); }
+    if (evento === 'AS_MANUAL_OFF') { state.alarma = false; refreshPeripheralUI(); }
+    if (evento === 'AM_MANUAL_ON') { state.chapa = true; refreshPeripheralUI(); }
+    if (evento === 'AM_MANUAL_OFF') { state.chapa = false; refreshPeripheralUI(); }
+
+    // Eventos Globales
+    if (evento === 'RESET_GENERAL') {
+        activeAlarmsMap.clear();
+        renderActiveAlarms();
+        state.foco = false; state.alarma = false; state.chapa = false;
+        refreshPeripheralUI();
+        
+        // Volver todos los sensores a normal (ya que el arduino no manda el evento de cerrado)
+        ['SM1','SP','SM3','SM2','SV','SH1','SH2'].forEach(s => updateSensorUI(s, 'CERRADO'));
+        
+        addActivityLog('Sistema reseteado desde la ESP32', 'INFO');
+    }
+    
+    if (evento === 'ERROR_ALARMA3_ACTIVA') {
+        addActivityLog('ACCESO DENEGADO: No se puede desactivar chapa con Alarma 3 activa', 'CRÍTICA');
+    }
+
+    if (evento === 'ERROR_SISTEMA_DESARMADO') {
+        addActivityLog('SISTEMA APAGADO: Controles manuales deshabilitados', 'MEDIA');
+    }
+
+    if (evento === 'ESP32_CONECTADA') {
+        addActivityLog('Placa ESP32 sincronizada y lista', 'INFO');
+    }
+    
+    if (evento === 'SISTEMA_ARMADO') {
+        if (!state.isArmed) {
+            state.isArmed = true;
+            updateSystemUI();
+            refreshPrimaryButtonsUI();
+            addActivityLog('Sistema Armado (Sincronizado ESP32)', 'ALTA');
+        }
+    }
+    
+    if (evento === 'SISTEMA_DESARMADO') {
+        if (state.isArmed) {
+            state.isArmed = false;
+            updateSystemUI();
+            refreshPrimaryButtonsUI();
+            addActivityLog('Sistema Desactivado (Sincronizado ESP32)', 'BAJA');
+        }
+    }
 }
