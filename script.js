@@ -479,8 +479,14 @@ function setTogglePairAdvanced(onId, offId, isOn, onActive, onInactive, offActiv
 
 // ─── Activity Log ──────────────────────────────────────────────
 function addActivityLog(event, severity) {
-    const tbody = document.querySelector('tbody');
+    const tbody = document.getElementById('activity-log-body') || document.querySelector('tbody');
     if (!tbody) return;
+
+    // Check if we should ignore PIR logs
+    const ignorePir = document.getElementById('ignore-pir-checkbox');
+    if (ignorePir && ignorePir.checked && event.includes('PIR')) {
+        return; // Don't log it
+    }
 
     const now = new Date();
     const date = now.toISOString().split('T')[0];
@@ -507,6 +513,12 @@ function addActivityLog(event, severity) {
         <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
     `;
 
+    // Check current severity filter
+    const severityFilter = document.getElementById('severity-filter');
+    if (severityFilter && severityFilter.value !== 'ALL' && severityFilter.value !== severity) {
+        row.style.display = 'none';
+    }
+
     // Brief flash animation
     row.style.backgroundColor = 'rgba(37, 99, 235, 0.15)';
     tbody.prepend(row);
@@ -516,6 +528,29 @@ function addActivityLog(event, severity) {
     const scrollContainer = tbody.closest('.overflow-y-auto');
     if (scrollContainer) scrollContainer.scrollTop = 0;
 }
+
+// Configurar los filtros de la tabla de historial
+document.addEventListener('DOMContentLoaded', () => {
+    const severityFilter = document.getElementById('severity-filter');
+    if (severityFilter) {
+        severityFilter.addEventListener('change', (e) => {
+            const filterVal = e.target.value;
+            const tbody = document.getElementById('activity-log-body') || document.querySelector('tbody');
+            if (!tbody) return;
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                const severitySpan = row.querySelector('td:nth-child(4) span');
+                if (!severitySpan) return;
+                const rowSeverity = severitySpan.textContent.trim();
+                if (filterVal === 'ALL' || rowSeverity === filterVal) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
 
 // ─── Helpers ───────────────────────────────────────────────────
 function setClasses(el, add, remove) {
@@ -538,8 +573,13 @@ function procesarEventoESP32(evento) {
 
     // Actualización de Sensores
     if (evento === 'SM1_ABIERTO') updateSensorUI('SM1', 'ABIERTO');
-    if (evento === 'SP_ACTIVO') updateSensorUI('SP', 'ACTIVO');
-    if (evento === 'SP_INACTIVO') updateSensorUI('SP', 'INACTIVO');
+    if (evento === 'SP_ACTIVO') {
+        updateSensorUI('SP', 'ACTIVO');
+        addActivityLog('Movimiento detectado por sensor PIR', 'ALTA');
+    }
+    if (evento === 'SP_INACTIVO') {
+        updateSensorUI('SP', 'INACTIVO');
+    }
     
     // Mapeo de Alarmas según message.txt
     const alarmasMap = {

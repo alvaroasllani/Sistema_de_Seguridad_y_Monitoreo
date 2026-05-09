@@ -332,9 +332,24 @@
                 <div class="bg-surface-container-low border border-outline flex flex-col min-h-0 flex-1">
                     <div class="p-4 border-b border-outline flex justify-between items-center bg-surface-container shrink-0">
                         <h3 class="font-headline font-extrabold text-sm tracking-tighter uppercase">Historial de Actividad</h3>
-                        <div class="flex gap-4">
-                            <span class="font-mono text-[10px] text-on-surface/40">FILTRAR POR: <span class="text-primary underline cursor-pointer">TODOS</span></span>
-                            <span class="font-mono text-[10px] text-on-surface/40">EXPORTAR .LOG</span>
+                        <div class="flex gap-4 items-center">
+                            <label class="flex items-center gap-1 cursor-pointer font-mono text-[10px] text-on-surface/60 hover:text-primary transition-colors">
+                                <input type="checkbox" id="ignore-pir-checkbox" class="accent-primary" checked>
+                                IGNORAR LOGS PIR
+                            </label>
+                            <div class="h-4 w-px bg-outline/30"></div>
+                            <span class="font-mono text-[10px] text-on-surface/40 flex items-center gap-1">FILTRAR: 
+                                <select id="severity-filter" class="bg-transparent text-primary underline cursor-pointer outline-none ml-1 font-bold">
+                                    <option value="ALL" class="bg-surface-container text-on-surface">TODOS</option>
+                                    <option value="CRÍTICA" class="bg-surface-container text-error">CRÍTICA</option>
+                                    <option value="ALTA" class="bg-surface-container text-orange-400">ALTA</option>
+                                    <option value="MEDIA" class="bg-surface-container text-yellow-400">MEDIA</option>
+                                    <option value="BAJA" class="bg-surface-container text-green-400">BAJA</option>
+                                    <option value="INFO" class="bg-surface-container text-blue-400">INFO</option>
+                                </select>
+                            </span>
+                            <div class="h-4 w-px bg-outline/30"></div>
+                            <span class="font-mono text-[10px] text-on-surface/40 cursor-pointer hover:text-primary transition-colors" onclick="document.querySelector('tbody').innerHTML=''">LIMPIAR</span>
                         </div>
                     </div>
                     <div class="overflow-y-auto">
@@ -348,43 +363,8 @@
                                     <th class="p-4 font-headline text-[10px] uppercase tracking-widest text-on-surface/60 border-b border-outline/30">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-outline/10 text-on-surface/80">
-                                <tr class="hover:bg-primary/10 transition-none group">
-                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
-                                    <td class="p-4 font-mono text-sm text-primary">23:40:12</td>
-                                    <td class="p-4 font-body text-sm">Acceso concedido: ADMIN_01</td>
-                                    <td class="p-4"><span class="px-2 py-0.5 bg-green-900/40 text-green-400 text-[10px] font-mono border border-green-500/30">BAJA</span></td>
-                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
-                                </tr>
-                                <tr class="bg-surface-container-high/30 hover:bg-primary/10 transition-none group">
-                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
-                                    <td class="p-4 font-mono text-sm text-primary">23:38:45</td>
-                                    <td class="p-4 font-body text-sm">Movimiento detectado: PASILLO_NORTE</td>
-                                    <td class="p-4"><span class="px-2 py-0.5 bg-yellow-900/40 text-yellow-400 text-[10px] font-mono border border-yellow-500/30">MEDIA</span></td>
-                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
-                                </tr>
-                                <tr class="hover:bg-primary/10 transition-none group">
-                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
-                                    <td class="p-4 font-mono text-sm text-primary">23:30:00</td>
-                                    <td class="p-4 font-body text-sm text-error">Alarma activada: SECTOR_07_B</td>
-                                    <td class="p-4"><span class="px-2 py-0.5 bg-error-container text-white text-[10px] font-mono border border-error">CRÍTICA</span></td>
-                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
-                                </tr>
-                                <tr class="bg-surface-container-high/30 hover:bg-primary/10 transition-none group">
-                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
-                                    <td class="p-4 font-mono text-sm text-primary">23:25:12</td>
-                                    <td class="p-4 font-body text-sm">Reinicio de módulo de red</td>
-                                    <td class="p-4"><span class="px-2 py-0.5 bg-blue-900/40 text-blue-400 text-[10px] font-mono border border-blue-500/30">INFO</span></td>
-                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
-                                </tr>
-                                <tr class="hover:bg-primary/10 transition-none group">
-                                    <td class="p-4 font-mono text-sm">2024-05-21</td>
-                                    <td class="p-4 font-mono text-sm text-primary">23:15:04</td>
-                                    <td class="p-4 font-body text-sm">Desconexión temporal de CAM-04</td>
-                                    <td class="p-4"><span class="px-2 py-0.5 bg-yellow-900/40 text-yellow-400 text-[10px] font-mono border border-yellow-500/30">MEDIA</span></td>
-                                    <td class="p-4 text-primary text-xs font-mono uppercase underline cursor-pointer opacity-0 group-hover:opacity-100">Ver Detalles</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="activity-log-body" class="divide-y divide-outline/10 text-on-surface/80">
+                                <!-- Log rows will be populated here by JavaScript -->
                         </table>
                     </div>
                 </div>

@@ -355,7 +355,7 @@ void procesarComando(String comando) {
 
   if (comando == "MANTENIMIENTO2") {
 
-    mantenimientoM1 = false;
+    mantenimientoM1 = true; // M2 incluye M1
     mantenimientoM2 = true;
     mantenimientoM3 = false;
 
@@ -366,8 +366,8 @@ void procesarComando(String comando) {
 
   if (comando == "MANTENIMIENTO3") {
 
-    mantenimientoM1 = false;
-    mantenimientoM2 = false;
+    mantenimientoM1 = true; // M3 incluye M1 y M2
+    mantenimientoM2 = true;
     mantenimientoM3 = true;
 
     inicioMantenimiento = millis();
