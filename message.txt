@@ -156,6 +156,18 @@ void reconnect() {
 
   while (!client.connected()) {
 
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi desconectado, intentando reconectar...");
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println("\nWiFi Reconectado.");
+      Serial.println(WiFi.localIP());
+    }
+
     Serial.print("Conectando MQTT...");
 
     if (client.connect("ESP32_RADIOBASE")) {

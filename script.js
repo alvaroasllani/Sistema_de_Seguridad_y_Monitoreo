@@ -572,7 +572,7 @@ function procesarEventoESP32(evento) {
     evento = evento.trim();
 
     // Actualización de Sensores
-    if (evento === 'SM1_ABIERTO') updateSensorUI('SM1', 'ABIERTO');
+    if (evento === 'SM1_ABIERTO') updateSensorUI('SM1', 'ACTIVO');
     if (evento === 'SP_ACTIVO') {
         updateSensorUI('SP', 'ACTIVO');
         addActivityLog('Movimiento detectado por sensor PIR', 'ALTA');
@@ -580,18 +580,27 @@ function procesarEventoESP32(evento) {
     if (evento === 'SP_INACTIVO') {
         updateSensorUI('SP', 'INACTIVO');
     }
+
+    // Restauraciones de sensores (vuelven a INACTIVO)
+    if (evento === 'GABINETE_CERRADO') updateSensorUI('SM2', 'INACTIVO');
+    if (evento === 'BATERIA1_RESTAURADA') updateSensorUI('SH1', 'INACTIVO');
+    if (evento === 'BATERIA2_RESTAURADA') updateSensorUI('SH2', 'INACTIVO');
+    if (evento === 'RESET_AM') updateSensorUI('SV', 'INACTIVO');
     
-    // Mapeo de Alarmas según message.txt
+    // Mapeo de Alarmas según message.txt (cada alarma activa su sensor correspondiente)
     const alarmasMap = {
-        'ALARMA1_INTRUSION': { alarma: 1, nombre: 'Intrusión de ingreso a radiobase' },
-        'ALARMA2_SALA_MAQUINAS': { alarma: 2, nombre: 'Apertura sala de máquinas' },
-        'ALARMA3_FORCEJEO': { alarma: 3, nombre: 'Forcejeo en gabinete' },
-        'ALARMA4_GABINETE': { alarma: 4, nombre: 'Apertura de gabinete' },
-        'ALARMA5_BATERIA1': { alarma: 5, nombre: 'Extracción Batería 1' },
-        'ALARMA6_BATERIA2': { alarma: 6, nombre: 'Extracción Batería 2' }
+        'ALARMA1_INTRUSION': { alarma: 1, nombre: 'Intrusión de ingreso a radiobase', sensor: 'SM1' },
+        'ALARMA2_SALA_MAQUINAS': { alarma: 2, nombre: 'Apertura sala de máquinas', sensor: 'SM3' },
+        'ALARMA3_FORCEJEO': { alarma: 3, nombre: 'Forcejeo en gabinete', sensor: 'SV' },
+        'ALARMA4_GABINETE': { alarma: 4, nombre: 'Apertura de gabinete', sensor: 'SM2' },
+        'ALARMA5_BATERIA1': { alarma: 5, nombre: 'Extracción Batería 1', sensor: 'SH1' },
+        'ALARMA6_BATERIA2': { alarma: 6, nombre: 'Extracción Batería 2', sensor: 'SH2' }
     };
     
     if (alarmasMap[evento]) {
+        // Activar el indicador del sensor correspondiente
+        updateSensorUI(alarmasMap[evento].sensor, 'ACTIVO');
+
         addActiveAlarm({
             ...alarmasMap[evento],
             estado: 'activa',
@@ -614,8 +623,8 @@ function procesarEventoESP32(evento) {
         state.foco = false; state.alarma = false; state.chapa = false;
         refreshPeripheralUI();
         
-        // Volver todos los sensores a normal (ya que el arduino no manda el evento de cerrado)
-        ['SM1','SP','SM3','SM2','SV','SH1','SH2'].forEach(s => updateSensorUI(s, 'CERRADO'));
+        // Volver todos los sensores a normal
+        ['SM1','SP','SM3','SM2','SV','SH1','SH2'].forEach(s => updateSensorUI(s, 'INACTIVO'));
         
         addActivityLog('Sistema reseteado desde la ESP32', 'INFO');
     }
