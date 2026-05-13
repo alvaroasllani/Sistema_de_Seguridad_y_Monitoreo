@@ -68,6 +68,13 @@ bool verificandoSM3 = false;
 
 bool estadoPIRAnterior = LOW;
 
+// Estado anterior de sensores para reporte independiente
+bool prevSensorSM1 = LOW;
+bool prevSensorSM2 = LOW;
+bool prevSensorSM3 = LOW;
+bool prevSensorSH1 = HIGH;
+bool prevSensorSH2 = HIGH;
+
 unsigned long tiempoSM1 = 0;
 unsigned long tiempoVentanaPIR = 0;
 unsigned long tiempoSM2 = 0;
@@ -293,6 +300,9 @@ void loop() {
     enviarEvento("SP_INACTIVO");
   }
   estadoPIRAnterior = estadoPIRActual;
+
+  // Reporte independiente de sensores (siempre activo, incluso en mantenimiento)
+  reportarSensores();
 
   controlarActuadores();
   controlarResetAM();
@@ -752,6 +762,43 @@ void verificarAlarma6() {
 }
 
 // ========================================================
+// REPORTE INDEPENDIENTE DE SENSORES
+// ========================================================
+
+void reportarSensores() {
+
+  bool sm1 = digitalRead(SM1);
+  bool sm2 = digitalRead(SM2);
+  bool sm3 = digitalRead(SM3);
+  bool sh1 = digitalRead(SH1);
+  bool sh2 = digitalRead(SH2);
+
+  // SM1, SM2, SM3 = INPUT_PULLUP -> HIGH = abierto/activo
+  if (sm1 != prevSensorSM1) {
+    enviarEvento(sm1 == HIGH ? "SENSOR_SM1_ACTIVO" : "SENSOR_SM1_INACTIVO");
+    prevSensorSM1 = sm1;
+  }
+  if (sm2 != prevSensorSM2) {
+    enviarEvento(sm2 == HIGH ? "SENSOR_SM2_ACTIVO" : "SENSOR_SM2_INACTIVO");
+    prevSensorSM2 = sm2;
+  }
+  if (sm3 != prevSensorSM3) {
+    enviarEvento(sm3 == HIGH ? "SENSOR_SM3_ACTIVO" : "SENSOR_SM3_INACTIVO");
+    prevSensorSM3 = sm3;
+  }
+
+  // SH1, SH2 = INPUT -> LOW = bateria removida/activo
+  if (sh1 != prevSensorSH1) {
+    enviarEvento(sh1 == LOW ? "SENSOR_SH1_ACTIVO" : "SENSOR_SH1_INACTIVO");
+    prevSensorSH1 = sh1;
+  }
+  if (sh2 != prevSensorSH2) {
+    enviarEvento(sh2 == LOW ? "SENSOR_SH2_ACTIVO" : "SENSOR_SH2_INACTIVO");
+    prevSensorSH2 = sh2;
+  }
+}
+
+// ========================================================
 // ACTUADORES
 // ========================================================
 
@@ -795,8 +842,8 @@ void controlarActuadores() {
     digitalWrite(AS, manualAS ? estadoManualAS : LOW);
   }
 
-  // Chapa AM se abre forzosamente si alarma 4 (gabinete) o alarma 3 (forcejeo) está activa
-  if (alarma4 || alarma3) {
+  // Chapa AM se abre forzosamente solo si alarma 3 (forcejeo) está activa
+  if (alarma3) {
       digitalWrite(AM, HIGH);
   } else {
       digitalWrite(AM, manualAM ? estadoManualAM : LOW);

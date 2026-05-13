@@ -586,6 +586,18 @@ function procesarEventoESP32(evento) {
     if (evento === 'BATERIA1_RESTAURADA') updateSensorUI('SH1', 'INACTIVO');
     if (evento === 'BATERIA2_RESTAURADA') updateSensorUI('SH2', 'INACTIVO');
     if (evento === 'RESET_AM') updateSensorUI('SV', 'INACTIVO');
+
+    // Reporte independiente de sensores (funciona siempre, incluso en mantenimiento)
+    if (evento === 'SENSOR_SM1_ACTIVO') updateSensorUI('SM1', 'ACTIVO');
+    if (evento === 'SENSOR_SM1_INACTIVO') updateSensorUI('SM1', 'INACTIVO');
+    if (evento === 'SENSOR_SM2_ACTIVO') updateSensorUI('SM2', 'ACTIVO');
+    if (evento === 'SENSOR_SM2_INACTIVO') updateSensorUI('SM2', 'INACTIVO');
+    if (evento === 'SENSOR_SM3_ACTIVO') updateSensorUI('SM3', 'ACTIVO');
+    if (evento === 'SENSOR_SM3_INACTIVO') updateSensorUI('SM3', 'INACTIVO');
+    if (evento === 'SENSOR_SH1_ACTIVO') updateSensorUI('SH1', 'ACTIVO');
+    if (evento === 'SENSOR_SH1_INACTIVO') updateSensorUI('SH1', 'INACTIVO');
+    if (evento === 'SENSOR_SH2_ACTIVO') updateSensorUI('SH2', 'ACTIVO');
+    if (evento === 'SENSOR_SH2_INACTIVO') updateSensorUI('SH2', 'INACTIVO');
     
     // Mapeo de Alarmas según message.txt (cada alarma activa su sensor correspondiente)
     const alarmasMap = {
