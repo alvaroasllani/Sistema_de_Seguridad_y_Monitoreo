@@ -370,6 +370,10 @@ void procesarComando(String comando) {
     mantenimientoM2 = false;
     mantenimientoM3 = false;
 
+    // Limpiar alarmas de zonas 1-3 para que re-detecten al finalizar
+    alarma1 = false; alarma2 = false; alarma3 = false;
+    esperandoPIR = false; verificandoSM3 = false;
+
     inicioMantenimiento = millis();
 
     enviarEvento("MODO_M1_ACTIVADO");
@@ -381,6 +385,11 @@ void procesarComando(String comando) {
     mantenimientoM2 = true;
     mantenimientoM3 = false;
 
+    // Limpiar alarmas de zonas 1-5
+    alarma1 = false; alarma2 = false; alarma3 = false;
+    alarma4 = false;
+    esperandoPIR = false; verificandoSM2 = false; verificandoSM3 = false;
+
     inicioMantenimiento = millis();
 
     enviarEvento("MODO_M2_ACTIVADO");
@@ -391,6 +400,12 @@ void procesarComando(String comando) {
     mantenimientoM1 = true; // M3 incluye M1 y M2
     mantenimientoM2 = true;
     mantenimientoM3 = true;
+
+    // Limpiar TODAS las alarmas
+    alarma1 = false; alarma2 = false; alarma3 = false;
+    alarma4 = false; alarma5 = false; alarma6 = false;
+    esperandoPIR = false; verificandoSM2 = false; verificandoSM3 = false;
+    cicloActivo = false;
 
     inicioMantenimiento = millis();
 
