@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initPeripherals();
     initMaintenance();
     initCamera();
-    
+
     // Connect MQTT when page loads
     window.mqttClient.onConnect(() => {
         const dot = document.getElementById('mqtt-status-dot');
@@ -55,11 +55,41 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── Camera Setup ──────────────────────────────────────────────
+let camaraTimer = null;
+const CAMARA_DURACION_MS = 5 * 1000; // 5 segundos
+
+function activarCamaraPorAlarma() {
+    const camFeed = document.getElementById('cam-feed');
+    const inputCamIp = document.getElementById('cam-ip');
+    if (!camFeed || !inputCamIp) return;
+
+    const ip = inputCamIp.value.trim();
+    if (!ip) return;
+
+    // Si ya está transmitiendo, solo resetear el timer
+    if (!camFeed.src || !camFeed.src.includes('/stream')) {
+        camFeed.src = `http://${ip}:81/stream`;
+        addActivityLog('Cámara activada automáticamente por alarma', 'ALTA');
+    }
+
+    // Resetear el timer de apagado
+    clearTimeout(camaraTimer);
+    camaraTimer = setTimeout(() => {
+        camFeed.src = '';
+        addActivityLog('Cámara apagada automáticamente', 'INFO');
+    }, CAMARA_DURACION_MS);
+}
+
 function initCamera() {
     const btnUpdateCam = document.getElementById('btn-update-cam');
+    const btnCamOn = document.getElementById('btn-cam-on');
+    const btnCamOff = document.getElementById('btn-cam-off');
     const inputCamIp = document.getElementById('cam-ip');
     const camFeed = document.getElementById('cam-feed');
-    
+
+    // Cámara apagada por defecto (se enciende solo con alarmas)
+    camFeed.src = '';
+
     // Controles de cámara
     const btnZoom = document.getElementById('btn-cam-zoom');
     const btnPhoto = document.getElementById('btn-cam-photo');
@@ -70,9 +100,29 @@ function initCamera() {
     btnUpdateCam.addEventListener('click', () => {
         const ip = inputCamIp.value.trim();
         if (ip) {
-            camFeed.src = `http://${ip}:81/stream`;
-            addActivityLog(`Stream de cámara actualizado a: ${ip}`, 'INFO');
+            addActivityLog(`IP de cámara configurada: ${ip}`, 'INFO');
+            // Si la cámara ya estaba encendida, actualizar el stream con la nueva IP
+            if (camFeed.src && camFeed.src.includes('/stream')) {
+                camFeed.src = `http://${ip}:81/stream`;
+            }
         }
+    });
+
+    btnCamOn.addEventListener('click', () => {
+        const ip = inputCamIp.value.trim();
+        if (ip) {
+            camFeed.src = `http://${ip}:81/stream`;
+            addActivityLog('Cámara encendida manualmente', 'INFO');
+            // Al encender manualmente, cancelar el timer de apagado automático
+            clearTimeout(camaraTimer);
+        }
+    });
+
+    btnCamOff.addEventListener('click', () => {
+        camFeed.src = '';
+        addActivityLog('Cámara apagada manualmente', 'INFO');
+        // Cancelar cualquier timer pendiente
+        clearTimeout(camaraTimer);
     });
 
     btnZoom.addEventListener('click', () => {
@@ -90,14 +140,13 @@ function initCamera() {
     btnPhoto.addEventListener('click', () => {
         const ip = inputCamIp.value.trim();
         if (ip) {
-            // Usa el endpoint nativo del ESP32-CAM para capturar foto en alta resolución
             window.open(`http://${ip}/capture`, '_blank');
             addActivityLog('Captura de foto solicitada', 'MEDIA');
         }
     });
 
     btnFullscreen.addEventListener('click', () => {
-        const container = camFeed.parentElement; // El div de fondo negro
+        const container = camFeed.parentElement;
         if (!document.fullscreenElement) {
             container.requestFullscreen().catch(err => {
                 console.error(`Error al intentar pantalla completa: ${err.message}`);
@@ -115,7 +164,7 @@ function updateSensorUI(sensor, status) {
     if (!dot || !text) return;
 
     status = status.toUpperCase();
-    
+
     // Asumiendo que 'ABIERTO', 'ACTIVO', 'GOLPE' son estados de alerta
     const isAlert = status === 'ABIERTO' || status === 'ACTIVO' || status === 'GOLPE' || status === 'ERROR';
     const isNormal = status === 'CERRADO' || status === 'INACTIVO' || status === 'OK';
@@ -148,7 +197,7 @@ function initMaintenance() {
         const level = selectLevel.value;
         const duration = 60; // 1 min
         window.mqttClient.publishMaintenance(level, duration);
-        
+
         btnOn.className = 'px-3 py-1 font-mono text-[10px] border border-yellow-500 text-yellow-500 bg-yellow-500/20 font-bold uppercase transition-all shadow-[0_0_10px_rgba(234,179,8,0.3)]';
         btnOff.className = 'px-3 py-1 font-mono text-[10px] border border-outline/30 bg-surface-container-lowest text-on-surface/40 uppercase transition-all hover:text-on-surface/80';
         selectLevel.disabled = true;
@@ -163,20 +212,20 @@ function initMaintenance() {
             } else {
                 const m = Math.floor(mantTimeLeft / 60);
                 const s = mantTimeLeft % 60;
-                timerDisplay.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                timerDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
             }
         }, 1000);
-        
+
         addActivityLog(`Modo Mantenimiento ${level} Activado`, 'MEDIA');
     });
 
     btnOff.addEventListener('click', () => {
         window.mqttClient.publishMaintenanceOff();
-        
+
         btnOn.className = 'px-3 py-1 font-mono text-[10px] border border-outline/30 bg-surface-container-high text-on-surface/40 uppercase transition-all hover:text-on-surface/80';
         btnOff.className = 'px-3 py-1 font-mono text-[10px] border border-primary/50 bg-primary/20 text-primary font-bold uppercase transition-all';
         selectLevel.disabled = false;
-        
+
         clearInterval(mantInterval);
         timerDisplay.textContent = '00:00';
         addActivityLog(`Modo Mantenimiento Desactivado`, 'INFO');
@@ -189,7 +238,7 @@ const activeAlarmsMap = new Map();
 function addActiveAlarm(data) {
     // data = { alarma: 3, nombre: "...", estado: "activa", timestamp: "..." }
     const list = document.getElementById('active-alarms-list');
-    
+
     if (data.estado === "inactiva" || data.estado === "reset") {
         activeAlarmsMap.delete(data.alarma);
         renderActiveAlarms();
@@ -198,14 +247,14 @@ function addActiveAlarm(data) {
 
     activeAlarmsMap.set(data.alarma, data);
     renderActiveAlarms();
-    
+
     addActivityLog(`Alarma ${data.alarma}: ${data.nombre}`, 'CRÍTICA');
 }
 
 function renderActiveAlarms() {
     const list = document.getElementById('active-alarms-list');
     list.innerHTML = '';
-    
+
     if (activeAlarmsMap.size === 0) {
         list.innerHTML = '<div class="font-mono text-[10px] text-on-surface/50 text-center py-2">SIN ALARMAS ACTIVAS</div>';
         return;
@@ -279,7 +328,7 @@ function initSystemToggle() {
         state.isArmed = !state.isArmed;
         updateSystemUI();
         refreshPrimaryButtonsUI();
-        
+
         // Enviar comando al ESP32
         if (state.isArmed) {
             window.mqttClient.publishCommand('SISTEMA_ON');
@@ -494,10 +543,10 @@ function addActivityLog(event, severity) {
 
     const severityMap = {
         'CRÍTICA': 'bg-error-container text-white border-error',
-        'ALTA':    'bg-yellow-900/40 text-yellow-400 border-yellow-500/30',
-        'MEDIA':   'bg-yellow-900/40 text-yellow-400 border-yellow-500/30',
-        'BAJA':    'bg-green-900/40 text-green-400 border-green-500/30',
-        'INFO':    'bg-blue-900/40 text-blue-400 border-blue-500/30'
+        'ALTA': 'bg-yellow-900/40 text-yellow-400 border-yellow-500/30',
+        'MEDIA': 'bg-yellow-900/40 text-yellow-400 border-yellow-500/30',
+        'BAJA': 'bg-green-900/40 text-green-400 border-green-500/30',
+        'INFO': 'bg-blue-900/40 text-blue-400 border-blue-500/30'
     };
     const cls = severityMap[severity] || severityMap['INFO'];
 
@@ -598,7 +647,7 @@ function procesarEventoESP32(evento) {
     if (evento === 'SENSOR_SH1_INACTIVO') updateSensorUI('SH1', 'INACTIVO');
     if (evento === 'SENSOR_SH2_ACTIVO') updateSensorUI('SH2', 'ACTIVO');
     if (evento === 'SENSOR_SH2_INACTIVO') updateSensorUI('SH2', 'INACTIVO');
-    
+
     // Mapeo de Alarmas según message.txt (cada alarma activa su sensor correspondiente)
     const alarmasMap = {
         'ALARMA1_INTRUSION': { alarma: 1, nombre: 'Intrusión de ingreso a radiobase', sensor: 'SM1' },
@@ -608,7 +657,7 @@ function procesarEventoESP32(evento) {
         'ALARMA5_BATERIA1': { alarma: 5, nombre: 'Extracción Batería 1', sensor: 'SH1' },
         'ALARMA6_BATERIA2': { alarma: 6, nombre: 'Extracción Batería 2', sensor: 'SH2' }
     };
-    
+
     if (alarmasMap[evento]) {
         // Activar el indicador del sensor correspondiente
         updateSensorUI(alarmasMap[evento].sensor, 'ACTIVO');
@@ -618,6 +667,9 @@ function procesarEventoESP32(evento) {
             estado: 'activa',
             timestamp: new Date().toLocaleTimeString()
         });
+
+        // Encender cámara automáticamente por 5 minutos
+        activarCamaraPorAlarma();
     }
 
     // Confirmación de Actuadores y Controles
@@ -634,13 +686,13 @@ function procesarEventoESP32(evento) {
         renderActiveAlarms();
         state.foco = false; state.alarma = false; state.chapa = false;
         refreshPeripheralUI();
-        
+
         // Volver todos los sensores a normal
-        ['SM1','SP','SM3','SM2','SV','SH1','SH2'].forEach(s => updateSensorUI(s, 'INACTIVO'));
-        
+        ['SM1', 'SP', 'SM3', 'SM2', 'SV', 'SH1', 'SH2'].forEach(s => updateSensorUI(s, 'INACTIVO'));
+
         addActivityLog('Sistema reseteado desde la ESP32', 'INFO');
     }
-    
+
     if (evento === 'ERROR_ALARMA3_ACTIVA') {
         addActivityLog('ACCESO DENEGADO: No se puede desactivar chapa con Alarma 3 activa', 'CRÍTICA');
     }
@@ -652,7 +704,7 @@ function procesarEventoESP32(evento) {
     if (evento === 'ESP32_CONECTADA') {
         addActivityLog('Placa ESP32 sincronizada y lista', 'INFO');
     }
-    
+
     if (evento === 'SISTEMA_ARMADO') {
         if (!state.isArmed) {
             state.isArmed = true;
@@ -661,7 +713,7 @@ function procesarEventoESP32(evento) {
             addActivityLog('Sistema Armado (Sincronizado ESP32)', 'ALTA');
         }
     }
-    
+
     if (evento === 'SISTEMA_DESARMADO') {
         if (state.isArmed) {
             state.isArmed = false;
